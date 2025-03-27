@@ -2,6 +2,7 @@
 using LaboChess8.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LaboChess8.Controllers
 {
@@ -63,6 +64,39 @@ namespace LaboChess8.Controllers
             context.SaveChanges();
             return Ok("Tournamen created successfully");
         }
+       
+
+
+
+
+
+        //{
+        //    Tournament? tournament = context.Tournaments.Find(tournamentId);
+        //    if (tournament == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    if (tournament.Status != "waiting for players")
+        //    {
+        //        return BadRequest("Tournament is already started");
+        //    }
+        //    if (tournament.Players.Count < tournament.MinPlayers)
+        //    {
+        //        return BadRequest("Not enough players");
+        //    }
+        //    tournament.Status = "started";
+        //    context.SaveChanges();
+        //    return Ok("Tournament started successfully");
+        //}
+
+
+
+
+
+
+
+
+
         [HttpGet]
 
         public IActionResult Available()
