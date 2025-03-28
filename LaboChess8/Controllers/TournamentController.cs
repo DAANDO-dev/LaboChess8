@@ -1,5 +1,6 @@
 ﻿using LaboChess8.DTO;
 using LaboChess8.Entities;
+using LaboChess8.Enum;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,14 +11,14 @@ namespace LaboChess8.Controllers
     [ApiController]
     public class TournamentController(LaboChessContext context) : ControllerBase
     {
-        [HttpPost]
+        [HttpPatch]
 
         public IActionResult Tournament([FromBody] TournamentDTO dto)
         {
 
-            
+
             // Check if MinPlayers and MaxPlayers are between 2 and 32
-            
+
 
             if (dto.MinPlayers < 2 || dto.MinPlayers > 32 || dto.MaxPlayers < 2 || dto.MaxPlayers > 32)
             {
@@ -36,14 +37,14 @@ namespace LaboChess8.Controllers
                 return BadRequest("......Bla");
             }
 
-            if(dto.RegistrationDeadline < DateTime.Now.AddDays(dto.MinPlayers))
+            if (dto.RegistrationDeadline < DateTime.Now.AddDays(dto.MinPlayers))
             {
-                    return BadRequest("....");
+                return BadRequest("....");
             }
-          
+
 
             context.Tournaments.Add(new Tournament
-             {
+            {
                 Name = dto.Name,
                 Location = dto.Location,
                 MinPlayers = dto.MinPlayers,
@@ -64,84 +65,125 @@ namespace LaboChess8.Controllers
             context.SaveChanges();
             return Ok("Tournamen created successfully");
         }
-       
 
-
-
-
-
-        //{
-        //    Tournament? tournament = context.Tournaments.Find(tournamentId);
-        //    if (tournament == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    if (tournament.Status != "waiting for players")
-        //    {
-        //        return BadRequest("Tournament is already started");
-        //    }
-        //    if (tournament.Players.Count < tournament.MinPlayers)
-        //    {
-        //        return BadRequest("Not enough players");
-        //    }
-        //    tournament.Status = "started";
-        //    context.SaveChanges();
-        //    return Ok("Tournament started successfully");
-        //}
-
-
-
-
-
-
-
-
-
-        [HttpGet]
-
-        public IActionResult Available()
+        [HttpPatch("{id}/Start")]
+        public IActionResult StartTournamet(int tournamentId)
         {
-            List<TournamentResultDTO> avaiableTournamens = context.Tournaments
-                .Where(t => t.Status != "finished")
-                .OrderByDescending(t => t.RegistrationDeadLine)
-                .Take(10)
-                .Select(t => new TournamentResultDTO
-                {
-                    Name = t.Name,
-                    Categories = t.Categories,
-                    CurrentRound = t.CurrentRound,
-                    Location = t.Location,
-                    MaxPlayers = t.MaxPlayers,
-                    MinPlayers = t.MinPlayers,
-                    MaxELO = t.MaxELO,
-                    MinELO = t.MinELO,
-                    RegistrationDeadline = t.RegistrationDeadLine,
-                    Status = t.Status,
-                    RegisteredPlayersCount = t.Players.Count
-                })
-                .ToList();
+            Tournament? t = context.Tournaments
+                .Include(t => t.Players)
+                .FirstOrDefault(t => t.Id == tournamentId);
 
-            return Ok(avaiableTournamens);
-        }
-
-
-
-
-        [HttpDelete("{id}")]
-        public IActionResult Remove(int id)
-        {
-            Tournament? toDelete = context.Tournaments.Find(id);
-            if(toDelete == null)
+            if (t == null)
             {
-                return NotFound();
+                return BadRequest("Tournament not found");
             }
-            if(toDelete.Status != "waiting for players")
+
+
+            if(t.Status != "waiting for players")
             {
-                return BadRequest("Tournament is already started");
+                return BadRequest("Not enough players");
             }
-            context.Tournaments.Remove(toDelete);
+
+            if (t.Players.Count < t.MinPlayers)
+            {
+                return BadRequest("Not enough players");
+            }
+
+            if (DateTime.Now < t.RegistrationDeadLine)
+            {
+                return BadRequest("Registration deadline has not passed yet");
+            }
+
+            t.CurrentRound = 0;
+            t.Update = DateTime.Now;
+            matchups(t.Players.Select(p => p.Id), t);
             context.SaveChanges();
-            return Ok("Tournament deleted successfully");
+            return Ok("Tournament started successfully");
+
         }
+        List<Matchup> matchups(IEnumerable<int> Players, Tournament t)
+        {
+
+            List<Matchup> Result = new List<Matchup>();
+            int[] temp = Players.ToArray();
+            for (int i = 1; i < temp.Length; i++)
+            {
+                for (int j = 0; j < temp.Length / 2; j++)
+                {
+                    Result.Add(new Matchup
+                    {
+                        WhiteId = temp[j],
+                        BlackId = temp[^(j + 1)],
+                        Round = i,
+                        Result = MatchResult.NotPlayed,
+                        Tournament = t
+                        
+                    });
+
+                    Result.Add(new Matchup
+                    {
+                        BlackId = temp[j],
+                        WhiteId = temp[^(j + 1)],
+                        Round = temp.Length - i,
+                        Result = MatchResult.NotPlayed,
+                        Tournament = t
+
+                    });
+                }
+                temp = [temp.First(), temp.Last(), ..temp.Skip(1).SkipLast(1)];
+            }
+
+            context.Matchups.AddRange(Result);
+            return Result;
+        }
+
+           
+            [HttpGet]
+            public IActionResult Available()
+            {
+                List<TournamentResultDTO> availableTournaments = context.Tournaments
+                    .Where(t => t.Status != "finished")
+                    .OrderByDescending(t => t.RegistrationDeadLine)
+                    .Take(10)
+                    .Select(t => new TournamentResultDTO
+                    {
+                        Name = t.Name,
+                        Categories = t.Categories,
+                        CurrentRound = t.CurrentRound,
+                        Location = t.Location,
+                        MaxPlayers = t.MaxPlayers,
+                        MinPlayers = t.MinPlayers,
+                        MaxELO = t.MaxELO,
+                        MinELO = t.MinELO,
+                        RegistrationDeadline = t.RegistrationDeadLine,
+                        Status = t.Status,
+                        RegisteredPlayersCount = t.Players.Count
+                    })
+                    .ToList();
+
+                return Ok(availableTournaments);
+            }
+        
+
+
+
+
+            [HttpDelete("{id}")]
+            public IActionResult Remove(int id)
+            {
+                Tournament? toDelete = context.Tournaments.Find(id);
+                if (toDelete == null)
+                {
+                    return NotFound();
+                }
+                if (toDelete.Status != "waiting for players")
+                {
+                    return BadRequest("Tournament is already started");
+                }
+                context.Tournaments.Remove(toDelete);
+                context.SaveChanges();
+                return Ok("Tournament deleted successfully");
+            }
+        
     }
 }

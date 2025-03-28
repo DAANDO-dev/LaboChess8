@@ -28,6 +28,8 @@ namespace LaboChess8.Controllers
                 return BadRequest("Tournament or player not found");
             }
 
+
+
             if (t.Status != "waiting for players")
             {
                 return BadRequest("Tournament is finished or has already started");

@@ -7,5 +7,8 @@ namespace LaboChess8
     {
         public DbSet<Member> Members { get; set; } = null!;
         public DbSet<Tournament> Tournaments { get; set; } = null!;
+        public DbSet<Matchup> Matchups { get; set; } = null!;
+
+
     }
 }
