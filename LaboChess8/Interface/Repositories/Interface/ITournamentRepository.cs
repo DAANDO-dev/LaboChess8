@@ -4,6 +4,7 @@ namespace LaboChess8.Interface.Repositories
 {
     public interface ITournamentRepository
     {
+
     }
 
 

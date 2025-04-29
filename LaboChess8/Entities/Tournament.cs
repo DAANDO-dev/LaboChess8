@@ -20,6 +20,7 @@ namespace LaboChess8.Entities
         public DateTime CreationDate { get; set; } = DateTime.Now;
         public DateTime Update { get; set; } = DateTime.Now;
         public List<Member> Players { get; set; }
+        
 
     }
 }
